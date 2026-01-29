@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Fast Spin & Win</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    <style>
+        :root {
+            --primary: #6c5ce7;
+            --bg: #2d3436;
+            --text: #ffffff;
+            --wheel-border: #dfe6e9;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Header --- */
+        .header {
+            width: 100%;
+            padding: 15px;
+            background: rgba(0,0,0,0.3);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+        }
+
+        .user-profile { display: flex; align-items: center; }
+        .avatar { width: 35px; height: 35px; border-radius: 50%; margin-right: 10px; border: 2px solid var(--primary); }
+        .stats-box { background: #fdcb6e; color: #2d3436; padding: 5px 15px; border-radius: 20px; font-weight: bold; }
+
+        /* --- Game Area --- */
+        .game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin-bottom: 20px;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 5px solid var(--wheel-border);
+            /* 6 Segments */
+            background: conic-gradient(
+                #ff7675 0deg 60deg,
+                #74b9ff 60deg 120deg,
+                #55efc4 120deg 180deg,
+                #a29bfe 180deg 240deg,
+                #ffeaa7 240deg 300deg,
+                #fab1a0 300deg 360deg
+            );
+            /* Fast Spin Animation (0.5s) */
+            transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+        }
+
+        .wheel-text {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            font-weight: bold;
+            color: white;
+            text-shadow: 1px 1px 2px black;
+            pointer-events: none;
+        }
+        
+        .segment-text {
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform-origin: 0 0;
+            font-size: 16px;
+        }
+
+        .arrow {
+            position: absolute;
+            top: -15px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 20px solid transparent;
+            border-right: 20px solid transparent;
+            border-top: 30px solid #d63031;
+            z-index: 10;
+        }
+
+        .btn-spin {
+            background: #00b894;
+            color: white;
+            border: none;
+            padding: 15px 60px;
+            border-radius: 50px;
+            font-size: 22px;
+            font-weight: bold;
+            box-shadow: 0 6px 0 #008f72;
+            cursor: pointer;
+            transition: 0.1s;
+        }
+        
+        .btn-spin:active {
+            transform: translateY(4px);
+            box-shadow: 0 2px 0 #008f72;
+        }
+
+        .btn-spin:disabled {
+            background: #b2bec3;
+            box-shadow: none;
+            cursor: not-allowed;
+        }
+
+        #resultPopup {
+            font-size: 18px;
+            color: #55efc4;
+            height: 30px;
+            margin-top: 10px;
+            font-weight: bold;
+        }
+
+        /* --- Admin Panel --- */
+        #adminPanel { display: none; position: absolute; bottom: 10px; background: #fff; padding: 10px; border-radius: 8px; color: black; z-index: 100; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="user-profile">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar" class="avatar">
+            <div id="userName">Player</div>
+        </div>
+        <div class="stats-box">
+            💰 <span id="score">0</span>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <h3 onclick="triggerAdmin()" style="margin-bottom: 20px; cursor: pointer;">Lucky Wheel</h3>
+
+        <div class="wheel-container">
+            <div class="arrow"></div>
+            <div class="wheel" id="wheel">
+                <div class="wheel-text">
+                    <span class="segment-text" style="transform: rotate(30deg) translate(0, -100px) rotate(-30deg);">10</span>
+                    <span class="segment-text" style="transform: rotate(90deg) translate(0, -100px) rotate(-90deg);">500</span>
+                    <span class="segment-text" style="transform: rotate(150deg) translate(0, -100px) rotate(-150deg);">50</span>
+                    <span class="segment-text" style="transform: rotate(210deg) translate(0, -100px) rotate(-210deg);">20</span>
+                    <span class="segment-text" style="transform: rotate(270deg) translate(0, -100px) rotate(-270deg);">100</span>
+                    <span class="segment-text" style="transform: rotate(330deg) translate(0, -100px) rotate(-330deg);">0</span>
+                </div>
+            </div>
+            <div style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:50px; height:50px; background:white; border-radius:50%; box-shadow:0 0 10px rgba(0,0,0,0.5);"></div>
+        </div>
+
+        <div id="resultPopup"></div>
+
+        <button class="btn-spin" id="spinBtn" onclick="spinWheel()">SPIN</button>
+        <p style="color:#aaa; font-size:14px;">Spins Left: <span id="spinsLeft">3</span></p>
+
+        <div id="adminPanel">
+            <small>New Zone ID Link:</small><br>
+            <input type="text" id="adLinkInput" style="width: 150px;">
+            <button onclick="saveLink()">Save</button>
+            <button onclick="closeAdmin()">X</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // 1. Config
+        const defaultLink = "https://otieu.com/4/10534805"; // Change this
+        let score = parseInt(localStorage.getItem('spin_score')) || 0;
+        let spinsLeft = 3; 
+        let currentRotation = 0;
+
+        // UI Setup
+        document.getElementById('score').innerText = score;
+        document.getElementById('spinsLeft').innerText = spinsLeft;
+
+        // Telegram User Data
+        const user = tg.initDataUnsafe.user;
+        if(user) {
+            document.getElementById('userName').innerText = user.first_name;
+            if(user.photo_url) document.getElementById('userAvatar').src = user.photo_url;
+        }
+
+        // Segments: 10, 500, 50, 20, 100, 0
+        const segments = [10, 0, 100, 20, 50, 500]; 
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const btn = document.getElementById('spinBtn');
+            const resultDisplay = document.getElementById('resultPopup');
+
+            // Check Spins
+            if (spinsLeft <= 0) {
+                let choice = confirm("No spins left! Watch Ad for +2 Spins?");
+                if (choice) showAdAndReward();
+                return;
+            }
+
+            // Spin Start
+            spinsLeft--;
+            document.getElementById('spinsLeft').innerText = spinsLeft;
+            btn.disabled = true;
+            resultDisplay.innerText = "";
+
+            // Calculate Angle
+            const segmentIndex = Math.floor(Math.random() * 6); 
+            const reward = segments[segmentIndex];
+            const stopAngle = 3600 + (segmentIndex * 60) + 30; 
+            currentRotation += stopAngle; 
+
+            // Rotate
+            wheel.style.transform = `rotate(-${currentRotation}deg)`; 
+
+            // Show Result (0.5s delay)
+            setTimeout(() => {
+                score += reward;
+                localStorage.setItem('spin_score', score);
+                document.getElementById('score').innerText = score;
+
+                if(reward > 0) {
+                    resultDisplay.innerText = `🎉 You won ${reward} Coins!`;
+                    resultDisplay.style.color = "#55efc4";
+                } else {
+                    resultDisplay.innerText = "😢 Ops! Try Again.";
+                    resultDisplay.style.color = "#ff7675";
+                }
+
+                btn.disabled = false;
+
+                if(spinsLeft === 0) {
+                    btn.innerText = "GET 2 SPINS";
+                    btn.style.background = "#fd79a8";
+                    btn.onclick = showAdAndReward;
+                }
+
+            }, 500); 
+        }
+
+        function showAdAndReward() {
+            const link = localStorage.getItem('monetag_link') || defaultLink;
+            tg.openLink(link);
+            
+            // Reward after returning from ad
+            setTimeout(() => {
+                // CHANGE: Adding 2 spins instead of 5
+                spinsLeft += 2; 
+                document.getElementById('spinsLeft').innerText = spinsLeft;
+                
+                // Reset Button
+                const btn = document.getElementById('spinBtn');
+                btn.innerText = "SPIN";
+                btn.style.background = "#00b894";
+                btn.disabled = false;
+                btn.onclick = spinWheel;
+                
+                document.getElementById('resultPopup').innerText = "✅ 2 Spins Added!";
+            }, 3000); // 3 seconds wait simulation
+        }
+
+        // Admin Logic
+        let taps = 0;
+        function triggerAdmin() {
+            taps++;
+            if(taps === 5) {
+                document.getElementById('adminPanel').style.display = 'block';
+                document.getElementById('adLinkInput').value = localStorage.getItem('monetag_link') || defaultLink;
+                taps = 0;
+            }
+        }
+        function saveLink() {
+            localStorage.setItem('monetag_link', document.getElementById('adLinkInput').value);
+            alert("Link Updated!");
+            closeAdmin();
+        }
+        function closeAdmin() { document.getElementById('adminPanel').style.display = 'none'; }
+    </script>
+</body>
+</html>
