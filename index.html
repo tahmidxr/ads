@@ -1,0 +1,227 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spin & Win (Pro)</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+
+    <script>
+        // আপনার দেওয়া ডিফল্ট আইডি
+        const DEFAULT_ONCLICK = "10534934"; // Popunder
+        const DEFAULT_PUSH = "10534936";    // Push Notification
+
+        // স্টোরেজ থেকে আইডি চেক করা (অ্যাডমিনের জন্য)
+        const activeOnClick = localStorage.getItem('zone_onclick') || DEFAULT_ONCLICK;
+        const activePush = localStorage.getItem('zone_push') || DEFAULT_PUSH;
+
+        // ১. OnClick (Popunder) Script Load
+        // এটি স্ক্রিনে যেকোনো জায়গায় ক্লিক করলে অ্যাড ওপেন করবে
+        (function(s){
+            s.dataset.zone = activeOnClick;
+            s.src = 'https://al5sm.com/tag.min.js';
+            s.async = true;
+            s.dataset.cfasync = "false";
+        })([document.documentElement, document.body].filter(Boolean).pop().appendChild(document.createElement('script')));
+
+        // ২. Push Notification Script Load
+        // এটি নোটিফিকেশন পারমিশন চাইবে
+        const pushScript = document.createElement('script');
+        pushScript.src = "https://3nbf4.com/act/files/tag.min.js?z=" + activePush;
+        pushScript.setAttribute("data-cfasync", "false");
+        pushScript.async = true;
+        document.head.appendChild(pushScript);
+
+        console.log("Ads Active: OnClick=" + activeOnClick + ", Push=" + activePush);
+    </script>
+    <style>
+        :root { --primary: #00ff90; --bg: #111; --text: #fff; --input-bg: #222; }
+        body { background-color: var(--bg); color: var(--text); font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; flex-direction: column; align-items: center; height: 100vh; overflow: hidden; user-select: none; }
+        
+        .header { width: 100%; padding: 15px; background: rgba(255,255,255,0.05); display: flex; align-items: center; justify-content: space-between; box-sizing: border-box; border-bottom: 1px solid #333; }
+        .user-profile { display: flex; align-items: center; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid var(--primary); }
+        .stats-box { background: #333; padding: 5px 15px; border-radius: 20px; font-weight: bold; border: 1px solid var(--primary); color: var(--primary); }
+
+        .game-container { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+        .wheel-container { position: relative; width: 280px; height: 280px; margin-bottom: 25px; }
+        .wheel { width: 100%; height: 100%; border-radius: 50%; border: 5px solid #333; background: conic-gradient(#ff4757 0deg 60deg, #2ed573 60deg 120deg, #1e90ff 120deg 180deg, #ffa502 180deg 240deg, #ff6b81 240deg 300deg, #5352ed 300deg 360deg); transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1); box-shadow: 0 0 20px rgba(0, 255, 144, 0.2); }
+        .segment-text { position: absolute; top: 50%; left: 50%; transform-origin: 0 0; font-size: 16px; font-weight: bold; color: white; text-shadow: 1px 1px 2px black; }
+        .arrow { position: absolute; top: -20px; left: 50%; transform: translateX(-50%); width: 0; height: 0; border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 35px solid white; z-index: 10; }
+
+        .btn-spin { background: var(--primary); color: #000; border: none; padding: 15px 60px; border-radius: 12px; font-size: 20px; font-weight: bold; cursor: pointer; transition: 0.2s; box-shadow: 0 4px 15px rgba(0, 255, 144, 0.4); text-transform: uppercase; }
+        .btn-spin:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
+        
+        #resultPopup { font-size: 18px; color: var(--primary); height: 30px; margin-top: 15px; font-weight: bold; }
+
+        /* Admin Panel */
+        #adminPanel { display: none; position: absolute; bottom: 10px; left: 5%; width: 90%; background: #1a1a1a; padding: 20px; border-radius: 15px; border: 2px solid var(--primary); z-index: 200; box-sizing: border-box; box-shadow: 0 -5px 20px rgba(0,0,0,0.8); }
+        #adminPanel h4 { margin: 0 0 15px 0; color: var(--primary); text-align: center; }
+        .input-group { margin-bottom: 15px; text-align: left; }
+        .input-group label { display: block; font-size: 12px; color: #aaa; margin-bottom: 5px; }
+        .input-group input { width: 100%; padding: 10px; background: var(--input-bg); border: 1px solid #444; color: white; border-radius: 8px; box-sizing: border-box; }
+        .admin-btns { display: flex; gap: 10px; }
+        .btn-save { flex: 1; background: var(--primary); border: none; padding: 10px; border-radius: 8px; font-weight: bold; cursor: pointer; }
+        .btn-close { flex: 1; background: #ff4757; border: none; padding: 10px; border-radius: 8px; font-weight: bold; color: white; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="user-profile">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar" class="avatar">
+            <div class="user-info">
+                <h3 id="userName">Loading...</h3>
+                <p>Player</p>
+            </div>
+        </div>
+        <div class="stats-box">💰 <span id="score">0</span></div>
+    </div>
+
+    <div class="game-container">
+        <h3 onclick="triggerAdmin()" style="margin-bottom: 20px; cursor: pointer; color: #555; font-size: 12px;">🔒 TAP HERE 5 TIMES FOR SETTINGS</h3>
+
+        <div class="wheel-container">
+            <div class="arrow"></div>
+            <div class="wheel" id="wheel">
+                <span class="segment-text" style="transform: rotate(30deg) translate(0, -100px) rotate(-30deg);">10</span>
+                <span class="segment-text" style="transform: rotate(90deg) translate(0, -100px) rotate(-90deg);">500</span>
+                <span class="segment-text" style="transform: rotate(150deg) translate(0, -100px) rotate(-150deg);">50</span>
+                <span class="segment-text" style="transform: rotate(210deg) translate(0, -100px) rotate(-210deg);">20</span>
+                <span class="segment-text" style="transform: rotate(270deg) translate(0, -100px) rotate(-270deg);">100</span>
+                <span class="segment-text" style="transform: rotate(330deg) translate(0, -100px) rotate(-330deg);">0</span>
+            </div>
+            <div style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:50px; height:50px; background:var(--bg); border-radius:50%; border: 3px solid var(--primary);"></div>
+        </div>
+
+        <div id="resultPopup"></div>
+
+        <button class="btn-spin" id="spinBtn" onclick="handleButtonClick()">SPIN NOW</button>
+        <p style="color:#777; font-size:14px; margin-top: 10px;">Spins Left: <span id="spinsLeft" style="color: var(--primary);">3</span></p>
+
+        <div id="adminPanel">
+            <h4>⚙️ Zone ID Settings</h4>
+            <div class="input-group">
+                <label>OnClick (Popunder) ID</label>
+                <input type="text" id="inputOnClick" placeholder="e.g. 10534934">
+            </div>
+            <div class="input-group">
+                <label>Push Notification ID</label>
+                <input type="text" id="inputPush" placeholder="e.g. 10534936">
+            </div>
+            <div class="admin-btns">
+                <button class="btn-save" onclick="saveSettings()">Save & Reload</button>
+                <button class="btn-close" onclick="closeAdmin()">Cancel</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        let score = parseInt(localStorage.getItem('spin_score')) || 0;
+        let spinsLeft = 3; 
+        let currentRotation = 0;
+
+        document.getElementById('score').innerText = score;
+        document.getElementById('spinsLeft').innerText = spinsLeft;
+
+        const user = tg.initDataUnsafe.user;
+        if(user) {
+            document.getElementById('userName').innerText = user.first_name;
+            if(user.photo_url) document.getElementById('userAvatar').src = user.photo_url;
+        } else {
+            document.getElementById('userName').innerText = "Guest";
+        }
+
+        const segments = [10, 0, 100, 20, 50, 500]; 
+
+        function handleButtonClick() {
+            if (spinsLeft > 0) {
+                spinWheel();
+            } else {
+                showRewardMessage();
+            }
+        }
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const btn = document.getElementById('spinBtn');
+            const resultDisplay = document.getElementById('resultPopup');
+
+            spinsLeft--;
+            document.getElementById('spinsLeft').innerText = spinsLeft;
+            btn.disabled = true;
+            resultDisplay.innerText = "";
+
+            const segmentIndex = Math.floor(Math.random() * 6); 
+            const reward = segments[segmentIndex];
+            const stopAngle = 3600 + (segmentIndex * 60) + 30; 
+            currentRotation += stopAngle; 
+
+            wheel.style.transform = `rotate(-${currentRotation}deg)`; 
+
+            setTimeout(() => {
+                score += reward;
+                localStorage.setItem('spin_score', score);
+                document.getElementById('score').innerText = score;
+                resultDisplay.innerText = reward > 0 ? `+${reward} COINS!` : "TRY AGAIN";
+                resultDisplay.style.color = reward > 0 ? "#00ff90" : "#ff4757";
+                btn.disabled = false;
+                
+                if(spinsLeft === 0) {
+                    btn.innerText = "GET FREE SPINS";
+                    btn.style.background = "#ffa502"; 
+                    btn.style.color = "#000";
+                }
+            }, 500); 
+        }
+
+        function showRewardMessage() {
+            const btn = document.getElementById('spinBtn');
+            
+            // ইউজারকে মেসেজ দেখানো হবে
+            // কিন্তু কোনো রিওয়ার্ড দেওয়া হবে না যতক্ষণ না সে নিজেই ক্লিক করে অ্যাড দেখে
+            // Popunder যেহেতু অটোমেটিক, তাই আমরা ধরে নিচ্ছি ক্লিক করলেই অ্যাড আসবে
+            
+            alert("Tap anywhere on the screen to unlock spins!");
+            
+            // সিমুলেশন: ৩ সেকেন্ড পর বাটন রিসেট হবে (কিন্তু অ্যাড না দেখলে লাভ নেই)
+            setTimeout(() => {
+                spinsLeft += 2;
+                document.getElementById('spinsLeft').innerText = spinsLeft;
+                btn.innerText = "SPIN NOW";
+                btn.style.background = "#00ff90";
+                alert("2 Spins Added! (Keep clicking ads to support)");
+            }, 3000);
+        }
+
+        // --- Admin Logic ---
+        let taps = 0;
+        function triggerAdmin() {
+            taps++;
+            if(taps === 5) {
+                document.getElementById('adminPanel').style.display = 'block';
+                document.getElementById('inputOnClick').value = localStorage.getItem('zone_onclick') || DEFAULT_ONCLICK;
+                document.getElementById('inputPush').value = localStorage.getItem('zone_push') || DEFAULT_PUSH;
+                taps = 0;
+            }
+        }
+
+        function saveSettings() {
+            const newClick = document.getElementById('inputOnClick').value.trim();
+            const newPush = document.getElementById('inputPush').value.trim();
+            
+            if(newClick && newPush) {
+                localStorage.setItem('zone_onclick', newClick);
+                localStorage.setItem('zone_push', newPush);
+                alert("Zone IDs Saved!");
+                location.reload();
+            }
+        }
+
+        function closeAdmin() { document.getElementById('adminPanel').style.display = 'none'; }
+    </script>
+</body>
+</html>
