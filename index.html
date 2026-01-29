@@ -1,0 +1,340 @@
+<!DOCTYPE html>
+<html lang="bn">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>Spin & Win SDK</title>
+    <script src="https://telegram.org/js/telegram-web-app.js"></script>
+    
+    <script src="https://alwingulla.com/88/tag.min.js" data-zone="YOUR_ZONE_ID" async data-cfasync="false"></script>
+
+    <style>
+        :root {
+            --primary: #00ff90;
+            --bg: #111;
+            --text: #fff;
+            --card: #1c1c1c;
+        }
+
+        body {
+            background-color: var(--bg);
+            color: var(--text);
+            font-family: 'Segoe UI', sans-serif;
+            margin: 0;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            height: 100vh;
+            overflow: hidden;
+            user-select: none;
+        }
+
+        /* --- Header --- */
+        .header {
+            width: 100%;
+            padding: 15px;
+            background: rgba(255,255,255,0.05);
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            box-sizing: border-box;
+            border-bottom: 1px solid #333;
+        }
+
+        .user-profile { display: flex; align-items: center; }
+        .avatar { width: 40px; height: 40px; border-radius: 50%; margin-right: 10px; border: 2px solid var(--primary); }
+        .user-info h3 { margin: 0; font-size: 16px; color: var(--primary); }
+        .user-info p { margin: 0; font-size: 12px; color: #aaa; }
+        
+        .stats-box { 
+            background: #333; 
+            padding: 5px 15px; 
+            border-radius: 20px; 
+            font-weight: bold; 
+            border: 1px solid var(--primary);
+            color: var(--primary);
+        }
+
+        /* --- Game Area --- */
+        .game-container {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .wheel-container {
+            position: relative;
+            width: 280px;
+            height: 280px;
+            margin-bottom: 25px;
+        }
+
+        .wheel {
+            width: 100%;
+            height: 100%;
+            border-radius: 50%;
+            border: 5px solid #333;
+            background: conic-gradient(
+                #ff4757 0deg 60deg,
+                #2ed573 60deg 120deg,
+                #1e90ff 120deg 180deg,
+                #ffa502 180deg 240deg,
+                #ff6b81 240deg 300deg,
+                #5352ed 300deg 360deg
+            );
+            transition: transform 0.5s cubic-bezier(0.25, 0.1, 0.25, 1);
+            box-shadow: 0 0 20px rgba(0, 255, 144, 0.2);
+        }
+
+        .wheel-text { position: absolute; width: 100%; height: 100%; font-weight: bold; color: white; text-shadow: 1px 1px 2px black; pointer-events: none; }
+        .segment-text { position: absolute; top: 50%; left: 50%; transform-origin: 0 0; font-size: 16px; }
+
+        .arrow {
+            position: absolute;
+            top: -20px; left: 50%; transform: translateX(-50%);
+            width: 0; height: 0; 
+            border-left: 20px solid transparent; border-right: 20px solid transparent; border-top: 35px solid white;
+            z-index: 10;
+        }
+
+        .btn-spin {
+            background: var(--primary);
+            color: #000;
+            border: none;
+            padding: 15px 60px;
+            border-radius: 12px;
+            font-size: 20px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: 0.2s;
+            box-shadow: 0 4px 15px rgba(0, 255, 144, 0.4);
+            text-transform: uppercase;
+        }
+        
+        .btn-spin:active { transform: scale(0.95); }
+        .btn-spin:disabled { background: #333; color: #777; box-shadow: none; cursor: not-allowed; }
+
+        #resultPopup { font-size: 18px; color: var(--primary); height: 30px; margin-top: 15px; font-weight: bold; }
+
+        /* --- Admin Panel --- */
+        #adminPanel { 
+            display: none; 
+            position: absolute; 
+            bottom: 20px; 
+            background: #222; 
+            padding: 15px; 
+            border-radius: 12px; 
+            border: 1px solid var(--primary);
+            z-index: 100;
+            width: 80%;
+            text-align: center;
+        }
+        #adminPanel input { width: 90%; padding: 8px; margin: 10px 0; background: #111; border: 1px solid #555; color: white; border-radius: 5px; }
+        
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <div class="user-profile">
+            <img src="https://cdn-icons-png.flaticon.com/512/3135/3135715.png" id="userAvatar" class="avatar">
+            <div class="user-info">
+                <h3 id="userName">Loading...</h3>
+                <p>Player</p>
+            </div>
+        </div>
+        <div class="stats-box">
+            💰 <span id="score">0</span>
+        </div>
+    </div>
+
+    <div class="game-container">
+        <h3 onclick="triggerAdmin()" style="margin-bottom: 20px; cursor: pointer; color: #777; font-size: 14px;">TAP HERE 5 TIMES FOR ADMIN</h3>
+
+        <div class="wheel-container">
+            <div class="arrow"></div>
+            <div class="wheel" id="wheel">
+                <div class="wheel-text">
+                    <span class="segment-text" style="transform: rotate(30deg) translate(0, -100px) rotate(-30deg);">10</span>
+                    <span class="segment-text" style="transform: rotate(90deg) translate(0, -100px) rotate(-90deg);">500</span>
+                    <span class="segment-text" style="transform: rotate(150deg) translate(0, -100px) rotate(-150deg);">50</span>
+                    <span class="segment-text" style="transform: rotate(210deg) translate(0, -100px) rotate(-210deg);">20</span>
+                    <span class="segment-text" style="transform: rotate(270deg) translate(0, -100px) rotate(-270deg);">100</span>
+                    <span class="segment-text" style="transform: rotate(330deg) translate(0, -100px) rotate(-330deg);">0</span>
+                </div>
+            </div>
+            <div style="position: absolute; top:50%; left:50%; transform:translate(-50%,-50%); width:50px; height:50px; background:var(--bg); border-radius:50%; border: 3px solid var(--primary);"></div>
+        </div>
+
+        <div id="resultPopup"></div>
+
+        <button class="btn-spin" id="spinBtn" onclick="handleButtonClick()">SPIN NOW</button>
+        <p style="color:#777; font-size:14px; margin-top: 10px;">Spins Left: <span id="spinsLeft" style="color: var(--primary);">3</span></p>
+
+        <div id="adminPanel">
+            <h4 style="margin:0; color: var(--primary);">ADMIN: Set Zone ID</h4>
+            <p style="font-size: 12px; color: #aaa;">Enter Monetag Zone ID (Numbers Only)</p>
+            <input type="text" id="zoneIdInput" placeholder="e.g. 1234567">
+            <button class="btn-spin" style="padding: 5px 20px; font-size: 14px;" onclick="saveZoneId()">Save & Reload</button>
+            <button onclick="closeAdmin()" style="background:none; border:none; color:red; margin-top:10px; cursor:pointer;">Close</button>
+        </div>
+    </div>
+
+    <script>
+        const tg = window.Telegram.WebApp;
+        tg.expand();
+
+        // 1. Initial Config
+        // ডিফল্ট জোন আইডি (যদি অ্যাডমিন সেট না করে) - এটি পরিবর্তন করুন
+        const DEFAULT_ZONE_ID = "10534918"; 
+        
+        let score = parseInt(localStorage.getItem('spin_score')) || 0;
+        let spinsLeft = 3; 
+        let currentRotation = 0;
+        let activeZoneId = localStorage.getItem('monetag_zone_id') || DEFAULT_ZONE_ID;
+
+        // UI Setup
+        document.getElementById('score').innerText = score;
+        document.getElementById('spinsLeft').innerText = spinsLeft;
+
+        // Telegram User Data
+        const user = tg.initDataUnsafe.user;
+        if(user) {
+            document.getElementById('userName').innerText = user.first_name;
+            if(user.photo_url) document.getElementById('userAvatar').src = user.photo_url;
+        } else {
+            document.getElementById('userName').innerText = "Guest User";
+        }
+
+        // 2. Load Monetag Script Dynamically based on Zone ID
+        function loadAdScript() {
+            // Remove old script if exists
+            const oldScript = document.getElementById('monetag-script');
+            if(oldScript) oldScript.remove();
+
+            const script = document.createElement("script");
+            script.src = "https://alwingulla.com/88/tag.min.js"; // Monetag Official JS
+            script.dataset.zone = activeZoneId;
+            script.async = true;
+            script.id = 'monetag-script';
+            document.head.appendChild(script);
+            console.log("Ad Script Loaded for Zone:", activeZoneId);
+        }
+        
+        loadAdScript(); // App load holei script load hobe
+
+        // 3. Game Logic
+        const segments = [10, 0, 100, 20, 50, 500]; 
+
+        function handleButtonClick() {
+            if (spinsLeft > 0) {
+                spinWheel();
+            } else {
+                showRewardAd();
+            }
+        }
+
+        function spinWheel() {
+            const wheel = document.getElementById('wheel');
+            const btn = document.getElementById('spinBtn');
+            const resultDisplay = document.getElementById('resultPopup');
+
+            spinsLeft--;
+            document.getElementById('spinsLeft').innerText = spinsLeft;
+            btn.disabled = true;
+            resultDisplay.innerText = "";
+
+            const segmentIndex = Math.floor(Math.random() * 6); 
+            const reward = segments[segmentIndex];
+            const stopAngle = 3600 + (segmentIndex * 60) + 30; 
+            currentRotation += stopAngle; 
+
+            wheel.style.transform = `rotate(-${currentRotation}deg)`; 
+
+            setTimeout(() => {
+                score += reward;
+                localStorage.setItem('spin_score', score);
+                document.getElementById('score').innerText = score;
+
+                if(reward > 0) {
+                    resultDisplay.innerText = `+${reward} COINS!`;
+                    resultDisplay.style.color = "#00ff90";
+                } else {
+                    resultDisplay.innerText = "TRY AGAIN";
+                    resultDisplay.style.color = "#ff4757";
+                }
+
+                btn.disabled = false;
+
+                if(spinsLeft === 0) {
+                    btn.innerText = "WATCH AD (+2 SPINS)";
+                    btn.style.background = "#ffa502"; 
+                    btn.style.color = "#000";
+                }
+            }, 500); 
+        }
+
+        // 4. Show Ad Logic (OnClick / Interstitial)
+        function showRewardAd() {
+            const btn = document.getElementById('spinBtn');
+            btn.innerText = "LOADING AD...";
+            btn.disabled = true;
+
+            // Monetag সাধারণত ক্লিক করলে অটোমেটিক ওপেন হয় যদি স্ক্রিপ্ট ঠিক থাকে।
+            // কিন্তু আমরা এখানে জোর করে ইউজারকে একটা 'fake' প্রসেস দেখাবো যাতে সে ক্লিক করে।
+            
+            // Monetag এর ক্ষেত্রে সাধারণত কোনো ফাংশন কল করতে হয় না, 
+            // লিংকে ক্লিক করলেই SDK পপআপ ওপেন করে।
+            // তাই আমরা এখানে একটি ট্রিক ব্যবহার করবো:
+            
+            try {
+                // আমরা ১ সেকেন্ড অপেক্ষা করবো, তারপর রিওয়ার্ড দিবো
+                // কারণ Monetag OnClick এডের সাকসেস কলব্যাক দেয় না সহজে।
+                // ইউজার অ্যাড দেখে ফিরে আসলে আমরা রিওয়ার্ড দিবো।
+                
+                // এখানে আমরা ধরে নিচ্ছি ইউজার অ্যাড ক্লিক করেছে (কারণ স্ক্রিপ্ট পুরো বডিতে লিসেনার বসায়)
+                
+                setTimeout(() => {
+                    // Ad Closed logic simulation
+                    spinsLeft += 2;
+                    document.getElementById('spinsLeft').innerText = spinsLeft;
+                    
+                    btn.innerText = "SPIN NOW";
+                    btn.style.background = "#00ff90";
+                    btn.disabled = false;
+                    
+                    document.getElementById('resultPopup').innerText = "✅ 2 SPINS ADDED!";
+                }, 3000); // ৩ সেকেন্ড পর রিওয়ার্ড
+
+            } catch (e) {
+                console.error("Ad Error", e);
+                btn.disabled = false;
+            }
+        }
+
+        // 5. Admin Panel Logic
+        let taps = 0;
+        function triggerAdmin() {
+            taps++;
+            if(taps === 5) {
+                document.getElementById('adminPanel').style.display = 'block';
+                document.getElementById('zoneIdInput').value = activeZoneId;
+                taps = 0;
+            }
+        }
+
+        function saveZoneId() {
+            const newZone = document.getElementById('zoneIdInput').value.trim();
+            if(newZone) {
+                localStorage.setItem('monetag_zone_id', newZone);
+                alert("Zone ID Saved! App will reload.");
+                location.reload(); // নতুন আইডি কার্যকর করার জন্য রিলোড দরকার
+            }
+        }
+
+        function closeAdmin() { document.getElementById('adminPanel').style.display = 'none'; }
+    </script>
+</body>
+</html>
